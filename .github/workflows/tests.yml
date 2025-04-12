@@ -9,9 +9,14 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+    branches-ignore:
+      - 'v[0-9]+.[0-9]+.[0-9]+-docs'
   # Scheduled trigger on Monday at 2:47am UTC
   schedule:
     - cron: "47 2 * * 1"
+  merge_group:
+    types:
+      - checks_requested
 
 concurrency:
   group: unit-tests-${{ github.ref }}
@@ -25,6 +30,7 @@ jobs:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
     with:
       branch: ${{ github.ref }}
+      use_large_runner: ${{ github.event_name == 'merge_group' }}
 
       # Run a 'lightened' version of the CI on Pull Requests by default
       # Unless the label `ci:run-full-test-suite` is attached to the PR.
