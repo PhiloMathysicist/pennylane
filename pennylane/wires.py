@@ -120,7 +120,7 @@ class Wires(Sequence):
     """
 
     def _flatten(self):
-        """Serialize Wires into a flattened representation according to the PyTree convension."""
+        """Serialize Wires into a flattened representation according to the PyTree convention."""
         return self._labels, ()
 
     @classmethod
@@ -218,6 +218,16 @@ class Wires(Sequence):
             ndarray: array representing Wires object
         """
         return np.array(self._labels)
+
+    def __jax_array__(self):
+        """Defines a JAX numpy array representation of the Wires object.
+
+        Returns:
+            JAX ndarray: array representing Wires object
+        """
+        if jax_available:
+            return jax.numpy.array(self._labels)
+        raise ModuleNotFoundError("JAX not found")  # pragma: no cover
 
     @property
     def labels(self):

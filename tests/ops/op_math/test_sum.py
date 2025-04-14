@@ -16,7 +16,6 @@ Unit tests for the Sum arithmetic class of qubit operations
 """
 # pylint: disable=eval-used, unused-argument
 
-import warnings
 
 import gate_data as gd  # a file containing matrix rep of each gate
 import numpy as np
@@ -28,14 +27,6 @@ from pennylane import X, Y, Z, math
 from pennylane.operation import AnyWires, MatrixUndefinedError, Operator
 from pennylane.ops.op_math import Prod, Sum
 from pennylane.wires import Wires
-
-
-@pytest.fixture(autouse=True)
-def suppress_tape_property_deprecation_warning():
-    warnings.filterwarnings(
-        "ignore", "The tape/qtape property is deprecated", category=qml.PennyLaneDeprecationWarning
-    )
-
 
 no_mat_ops = (
     qml.Barrier,
@@ -626,6 +617,25 @@ class TestMatrix:
         sum_mat = sum_op.sparse_matrix().todense()
 
         assert np.allclose(true_mat, sum_mat)
+
+    @pytest.mark.parametrize("op1, mat1", non_param_ops[:5])
+    @pytest.mark.parametrize("op2, mat2", non_param_ops[:5])
+    def test_sparse_matrix_format(self, op1, mat1, op2, mat2):
+        """Test that the sparse matrix accepts the format parameter."""
+        from scipy.sparse import coo_matrix, csc_matrix, csr_matrix, lil_matrix
+
+        sum_op = qml.sum(op1(wires=0), op2(wires=1))
+        true_mat = math.kron(mat1, np.eye(2)) + math.kron(np.eye(2), mat2)
+        assert isinstance(sum_op.sparse_matrix(), csr_matrix)
+        sum_op_csc = sum_op.sparse_matrix(format="csc")
+        sum_op_lil = sum_op.sparse_matrix(format="lil")
+        sum_op_coo = sum_op.sparse_matrix(format="coo")
+        assert isinstance(sum_op_csc, csc_matrix)
+        assert isinstance(sum_op_lil, lil_matrix)
+        assert isinstance(sum_op_coo, coo_matrix)
+        assert np.allclose(true_mat, sum_op_csc.todense())
+        assert np.allclose(true_mat, sum_op_lil.todense())
+        assert np.allclose(true_mat, sum_op_coo.todense())
 
     @pytest.mark.parametrize("op1, mat1", non_param_ops[:5])
     @pytest.mark.parametrize("op2, mat2", non_param_ops[:5])
@@ -1312,8 +1322,8 @@ class TestIntegration:
                 Sum(qml.s_prod(1.1, qml.PauliX(0)), qml.s_prod(qnp.array(2.2), qml.PauliY(1)))
             )
 
-        circuit()
-        assert circuit.tape.trainable_params == [1]
+        tape = qml.workflow.construct_tape(circuit)()
+        assert tape.trainable_params == [1]
 
 
 # pylint: disable=too-few-public-methods
